@@ -24,19 +24,56 @@
 	int pos;
  } DFIFO, DSJF_NE, DSJF_EX, DHPF_EX, DHPF_NE, DRR_2, DRR_3, DLTS;
 int tt = 0;
-
+void expropiarSJF();
+void swap(int i, int j, thread ** v){
+		thread * temp = v[i];
+		v[i] = v[j];
+		v[j] = temp;
+}
+void swap(struct amigo * v, thread * r){
+	thread * t = r;
+	r = v->ready[v->size%512];
+	v->ready[v->size%512] = t;
+}
+void expropiar(struct amigo * v){
+	thread * t = v->running;
+	v->running = v->ready[v->size%512];
+	v->ready[v->size%512] = t;
+}
 void toReadyFIFO(thread p){
-	FIFO.size %= 512 ; 
 	*(FIFO.ready[FIFO.size%512]) = p;
 	FIFO.size++;
 }
-void toReadySJF_Ex(thread p){}
-void toReadySJF_NE(thread p){}
-void toReadyHPF_Ex(thread p){}
-void toReadyHPF_NE(thread p){}
-void toReadyRR_2(thread p){}
-void toReadyRR_3(thread p){}
-void toReadyLTS(thread p){}
+void toReadySJF_Ex(thread p){
+	*(SJF_EX.ready[SJF_EX.size%512]) = p;
+	if(p.DR < SJF_EX.running->DR) expropiarSJF();
+		SJF_EX.size++;
+}
+void toReadySJF_NE(thread p){
+	*(SJF_NE.ready[SJF_NE.size%512]) = p;
+	SJF_NE.size++;
+}
+void toReadyHPF_Ex(thread p){
+	*(HPF_EX.ready[HPF_EX.size%512]) = p;
+	if(HPF_EX.ready[HPF_EX.size]->PR > HPF_EX.running->PR) expropiar(&HPF_EX);
+	HPF_EX.size++;
+}
+void toReadyHPF_NE(thread p){
+	*(HPF_NE.ready[HPF_NE.size%512]) = p;
+	HPF_EX.size++;
+}
+void toReadyRR_2(thread p){
+	*(RR_2.ready[RR_2.size%512]) = p;
+	RR_2.size++;
+}
+void toReadyRR_3(thread p){
+		*(RR_3.ready[RR_3.size]) = p;
+		RR_3.size++;
+}
+void toReadyLTS(thread p){
+		*(LTS.ready[LTS.size]) = p;
+		LTS.size++;
+	}
 void passToReady(thread p){
 	
 	toReadyFIFO(p);
@@ -55,17 +92,21 @@ void passToReady(thread p){
 }
 void avanzar(int x){
 	int i = 0;
-	for(i ; i < procesos.pos ; i++){
+	for(i = 0; i < procesos.pos ; i++){
 		if(procesos.vector[i]->HL == x) passToReady(*(procesos.vector[i]));
 	}
 }
 
-
+void expropiarSJF(){
+	thread * temp = SJF_EX.running;
+	SJF_EX.running = SJF_EX.ready[SJF_EX.size];
+	SJF_EX.ready[SJF_EX.size] = temp;
+}
 
 int main(int argc, char ** argv){
 	FILE *fp;
 	int _pid,_hl,_dr,_pr,_tk;
-	thread t;
+	//thread t;
 	thread * pt;
 	fp = fopen(argv[1], "r");
 	if(fp == NULL) {
