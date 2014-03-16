@@ -33,10 +33,10 @@ bool used = false;
 void expropiarSJF();
 void expropiar(struct amigo * v)
 {
-	if(v->running == NULL ) return;
+	if(v->running == NULL || v->running->DR == 0) return;
 	thread * t = v->running;
-	v->running = v->ready[v->size%512];
-	v->ready[v->size%512] = t;
+	v->running = NULL;//v->ready[v->size%512];
+	v->ready[++v->size%512] = t;
 }
 void toReadyFIFO(thread p)
 {
@@ -61,14 +61,14 @@ void toReadyHPF_Ex(thread p)
 {
 	HPF_EX.ready[HPF_EX.size%512] = (thread*)malloc(sizeof(thread));
 	*(HPF_EX.ready[HPF_EX.size%512]) = p;
-	if(HPF_EX.running == NULL || HPF_EX.ready[HPF_EX.size]->PR > HPF_EX.running->PR) expropiar(&HPF_EX);
+	if(HPF_EX.running == NULL || (HPF_EX.ready[HPF_EX.size%512]->PR > HPF_EX.running->PR)) expropiar(&HPF_EX);
 	HPF_EX.size++;
 }
 void toReadyHPF_NE(thread p)
 {
 	HPF_NE.ready[HPF_NE.size%512] = (thread*)malloc(sizeof(thread));
 	*(HPF_NE.ready[HPF_NE.size%512]) = p;
-	HPF_EX.size++;
+	HPF_NE.size++;
 }
 void toReadyRR_2(thread p)
 {
@@ -110,24 +110,24 @@ void writecomposeint(diagrama * d, int i)
 	} while(i!=0);
 	for(z = at-1; z >=0 ; z--) d->diagrama[d->pos++] = s[z];
 }
+void writeCasilla(diagrama * d, int i){
+	d->diagrama[d->pos++] = '|';
+	writecomposeint(d,i);d->diagrama[d->pos++] = 's';
+	d->diagrama[d->pos++] = '|';
+}
 void runFIFO(int i)
 {
 	//if(FIFO.top >= FIFO.size) return;
-	if(FIFO.running != NULL &&FIFO.running->DR == 0 ) {
-		DFIFO.diagrama[DFIFO.pos++] = '|';
-		writecomposeint(&DFIFO,i);
-		DFIFO.diagrama[DFIFO.pos++] = 's';
-		DFIFO.diagrama[DFIFO.pos++] = '|';
-	}
+	bool writed = false;
 	if(FIFO.running == NULL || FIFO.running->DR == 0) {
+		if(FIFO.running != NULL &&FIFO.running->DR == 0 ){ 
+			writeCasilla(&DFIFO,i);
+			writed = true;
+		}
 		free(FIFO.running);
 		FIFO.running = FIFO.ready[FIFO.top];
-
 		if(FIFO.running != NULL) {
-			DFIFO.diagrama[DFIFO.pos++] = '|';
-			writecomposeint(&DFIFO,i);
-			DFIFO.diagrama[DFIFO.pos++] = 's';
-			DFIFO.diagrama[DFIFO.pos++] = '|';
+			if(!writed) {writeCasilla(&DFIFO,i); writed = false;}
 			FIFO.top++;
 			FIFO.top %= 512;
 			writecomposeint(&DFIFO,FIFO.running->PID);
@@ -138,51 +138,37 @@ void runFIFO(int i)
 		DFIFO.diagrama[DFIFO.pos++] = '*';
 		used = true;
 	}
-	//else DFIFO.diagrama[DFIFO.pos++] = '/';
 }
 void runRR_2(int i)
 {
-	if(RR_2.running != NULL &&  qt2 % 2 == 0) {
-		DRR_2.diagrama[DRR_2.pos++] = '|';
-		writecomposeint(&DRR_2,i);
-		DRR_2.diagrama[DRR_2.pos++] = 's';
-		DRR_2.diagrama[DRR_2.pos++] = '|';
-	}
 	if(RR_2.running == NULL ||  qt2 % 2 == 0 || RR_2.running->DR == 0) {
+		/*---------------------------------si expiro el tiempo----------------------------*/
 		if(RR_2.running != NULL && RR_2.running->DR == 0) {
 			free(RR_2.running);
-			DRR_2.diagrama[DRR_2.pos++] = '|';writecomposeint(&DRR_2,i);	DRR_2.diagrama[DRR_2.pos++] = 's';DRR_2.diagrama[DRR_2.pos++] = '|';
+			writeCasilla(&DRR_2,i);
 			RR_2.running = RR_2.ready[RR_2.top];
 			if(RR_2.running != NULL) {
-				//DRR_2.diagrama[DRR_2.pos++] = '|';writecomposeint(&DRR_2,i);DRR_2.diagrama[DRR_2.pos++] = 's';DRR_2.diagrama[DRR_2.pos++] = '|';
-				qt2 = 2;
+				qt2 = 0;
 				writecomposeint(&DRR_2,RR_2.running->PID);
 				RR_2.top++;
 				RR_2.top %= 512;
 			}
-
+			/*----------------------------si hay cambio por quantum----------------------------*/
 		} else if(RR_2.running != NULL && RR_2.running->DR != 0 && qt2 % 2 == 0 ) {
+			writeCasilla(&DRR_2,i);
 			thread * t = RR_2.running;
-			DRR_2.diagrama[DRR_2.pos++] = '|';
-			writecomposeint(&DRR_2,i);
-			DRR_2.diagrama[DRR_2.pos++] = 's';
-			DRR_2.diagrama[DRR_2.pos++] = '|';
-			RR_2.running = RR_2.ready[RR_2.top];
 			RR_2.ready[RR_2.size++] = t;
+			RR_2.running = RR_2.ready[RR_2.top];
 			if(RR_2.running != NULL) {
-				//DRR_2.diagrama[DRR_2.pos++] = '|';writecomposeint(&DRR_2,i);DRR_2.diagrama[DRR_2.pos++] = 's';DRR_2.diagrama[DRR_2.pos++] = '|';
 				writecomposeint(&DRR_2,RR_2.running->PID);
 				RR_2.top++;
 				RR_2.top %= 512;
 			}
-
-		} else if(RR_2.running == NULL) {
+		/*---------------------------si no habia ninguno corriendo----------------------------*/
+		} else if(RR_2.running == NULL ) {
 			RR_2.running = RR_2.ready[RR_2.top];
 			if(RR_2.running != NULL) {
-				DRR_2.diagrama[DRR_2.pos++] = '|';
-				writecomposeint(&DRR_2,i);
-				DRR_2.diagrama[DRR_2.pos++] = 's';
-				DRR_2.diagrama[DRR_2.pos++] = '|';
+				writeCasilla(&DRR_2,i);
 				writecomposeint(&DRR_2,RR_2.running->PID);
 				RR_2.top++;
 				RR_2.top %= 512;
@@ -196,7 +182,165 @@ void runRR_2(int i)
 		qt2++;
 	}
 }
+void runRR_3(int i)
+{
+	if(RR_3.running == NULL ||  qt3 % 3 == 0 || RR_3.running->DR == 0) {
+		/*---------------------------------si expiro el tiempo----------------------------*/
+		if(RR_3.running != NULL && RR_3.running->DR == 0) {
+			free(RR_3.running);
+			writeCasilla(&DRR_3,i);
+			RR_3.running = RR_3.ready[RR_3.top];
+			qt3 = 0;
+			if(RR_3.running != NULL) {
+				writecomposeint(&DRR_3,RR_3.running->PID);
+				RR_3.top++;
+				RR_3.top %= 512;
+			}
+			/*----------------------------si hay cambio por quantum----------------------------*/
+		} else if(RR_3.running != NULL && RR_3.running->DR != 0 && qt3 % 3 == 0 ) {
+			writeCasilla(&DRR_3,i);
+			thread * t = RR_3.running;
+			RR_3.ready[RR_3.size++] = t;
+			RR_3.running = RR_3.ready[RR_3.top];
+			qt3 = 0;
+			if(RR_3.running != NULL) {
+				writecomposeint(&DRR_3,RR_3.running->PID);
+				RR_3.top++;
+				RR_3.top %= 512;
+			}
+		/*---------------------------si no habia ninguno corriendo----------------------------*/
+		} else if(RR_3.running == NULL ) {
+			RR_3.running = RR_3.ready[RR_3.top];
+			if(RR_3.running != NULL) {
+				writeCasilla(&DRR_3,i);
+				writecomposeint(&DRR_3,RR_3.running->PID);
+				RR_3.top++;
+				RR_3.top %= 512;
+			}
 
+		}
+	}
+	if(RR_3.running != NULL) {
+		RR_3.running->DR--;
+		DRR_3.diagrama[DRR_3.pos++] = '*';
+		qt3++;
+	}
+}
+void shortesToTop(amigo * a){
+	int i;
+	int mp = a->top;
+	for(i = a->top%512; i != a->size%512 ; i++){
+		i%=512;
+		if((a->ready[i]->DR < a->ready[mp]->DR) && a->ready[i]->DR > 0) mp = i;
+	}
+	thread * t = a->ready[a->top%512];
+	a->ready[a->top%512] = a->ready[mp];
+	a->ready[mp] = t;
+}
+void runSJF_NE(int i){
+	bool wwrited = false;
+	if(SJF_NE.running == NULL || SJF_NE.running->DR == 0){
+			if(SJF_NE.running == NULL){
+				shortesToTop(&SJF_NE);
+				SJF_NE.running = SJF_NE.ready[SJF_NE.top];
+				if(SJF_NE.running != NULL){
+						SJF_NE.top++; SJF_NE.top %=512;
+						writeCasilla(&DSJF_NE,i);
+						writecomposeint(&DSJF_NE,SJF_NE.running->PID);
+				}
+			}
+			else if(SJF_NE.running->DR == 0){
+				free(SJF_NE.running);
+				shortesToTop(&SJF_NE);
+				SJF_NE.running = SJF_NE.ready[SJF_NE.top];
+				writeCasilla(&DSJF_NE,i);
+				wwrited = true;
+				if(SJF_NE.running != NULL){
+						SJF_NE.top++; SJF_NE.top %=512;
+						if(!wwrited) writeCasilla(&DSJF_NE,i);
+						writecomposeint(&DSJF_NE,SJF_NE.running->PID);
+				}
+			}
+	}
+	if(SJF_NE.running != NULL)
+	{
+			DSJF_NE.diagrama[DSJF_NE.pos++] = '*';
+			SJF_NE.running->DR--;
+	}
+}
+void runSJF_EX(int i){
+	bool wwrited = false;
+	if(SJF_EX.running == NULL || SJF_EX.running->DR == 0){
+			if(SJF_EX.running == NULL){
+				shortesToTop(&SJF_EX);
+				SJF_EX.running = SJF_EX.ready[SJF_EX.top];
+				if(SJF_EX.running != NULL){
+						SJF_EX.top++; SJF_EX.top %=512;
+						writeCasilla(&DSJF_EX,i);
+						writecomposeint(&DSJF_EX,SJF_EX.running->PID);
+				}
+			}
+			else if(SJF_EX.running->DR == 0){
+				free(SJF_EX.running);
+				shortesToTop(&SJF_EX);
+				SJF_EX.running = SJF_EX.ready[SJF_EX.top];
+				writeCasilla(&DSJF_EX,i);
+				wwrited = true;
+				if(SJF_EX.running != NULL){
+						SJF_EX.top++; SJF_EX.top %=512;
+						if(!wwrited) writeCasilla(&DSJF_EX,i);
+						writecomposeint(&DSJF_EX,SJF_EX.running->PID);
+				}
+			}
+	}
+	if(SJF_EX.running != NULL)
+	{
+			DSJF_EX.diagrama[DSJF_EX.pos++] = '*';
+			SJF_EX.running->DR--;
+	}
+}
+void priorToTop(amigo * a){
+	int i;
+	int mp = a->top;
+	for(i = a->top%512; i != a->size%512 ; i++){
+		i%=512;
+		if((a->ready[i]->PR > a->ready[mp]->PR) && a->ready[i]->DR > 0) mp = i;
+	}
+	thread * t = a->ready[a->top%512];
+	a->ready[a->top%512] = a->ready[mp];
+	a->ready[mp] = t;
+}
+void runHPF_EX(int i){
+	bool wwrited = false;
+	if(HPF_EX.running == NULL || HPF_EX.running->DR == 0){
+			if(HPF_EX.running == NULL){
+				priorToTop(&HPF_EX);
+				HPF_EX.running = HPF_EX.ready[HPF_EX.top];
+				if(HPF_EX.running != NULL){
+						HPF_EX.top++; HPF_EX.top %=512;
+						writeCasilla(&DHPF_EX,i);
+						writecomposeint(&DHPF_EX,HPF_EX.running->PID);
+				}
+			}
+			else if(HPF_EX.running->DR == 0){
+				free(HPF_EX.running);
+				priorToTop(&HPF_EX);
+				HPF_EX.running = HPF_EX.ready[HPF_EX.top];
+				writeCasilla(&DHPF_EX,i);
+				wwrited = true;
+				if(HPF_EX.running != NULL){
+						HPF_EX.top++; HPF_EX.top %=512;
+						if(!wwrited) writeCasilla(&DHPF_EX,i);
+						writecomposeint(&DHPF_EX,HPF_EX.running->PID);
+				}
+			}
+	}
+	if(HPF_EX.running != NULL)
+	{
+			DHPF_EX.diagrama[DHPF_EX.pos++] = '*';
+			HPF_EX.running->DR--;
+	}
+}
 void insertProceso(thread * t)
 {
 	procesos.vector[procesos.pos++] = t;
@@ -208,14 +352,6 @@ void avanzar(int x)
 		if(procesos.vector[i]->HL == x) passToReady(*(procesos.vector[i]));
 	}
 }
-/*
-void expropiarSJF(){
-	if(SJF_EX.running == NULL) SJF_EX.size--;
-	thread * temp = SJF_EX.running;
-	SJF_EX.running = SJF_EX.ready[SJF_EX.size];
-	SJF_EX.ready[SJF_EX.size] = temp;
-
-}*/
 void printThread(thread * t)
 {
 	printf("PID: %9d\nLlegada %6d\nDuracion: %4d\nPrioridad: %3d\nTicketes: %4d\n---------------------\n", t->PID,t->HL,t->DR,t->PR,t->TK);
@@ -224,6 +360,10 @@ void correr(int i)
 {
 	runFIFO(i);
 	runRR_2(i);
+	runRR_3(i);
+	runSJF_NE(i);
+	runSJF_EX(i);
+	runHPF_EX(i);
 }
 
 int main(int argc, char ** argv)
@@ -259,8 +399,16 @@ int main(int argc, char ** argv)
 	}
 	DFIFO.diagrama[DFIFO.pos++] = '\0';
 	DRR_2.diagrama[DRR_2.pos++] = '\0';
+	DRR_3.diagrama[DRR_3.pos++] = '\0';
+	DSJF_NE.diagrama[DSJF_NE.pos++] = '\0';
+	DSJF_EX.diagrama[DSJF_EX.pos++] = '\0';
+	DHPF_EX.diagrama[DHPF_EX.pos++] = '\0';
 	printf(" FIFO: %s\n",DFIFO.diagrama);
 	printf(" RR2: %s\n",DRR_2.diagrama);
+	printf(" RR3: %s\n",DRR_3.diagrama);
+	printf(" SJF_NE: %s\n",DSJF_NE.diagrama);
+	printf(" SJF_EX: %s\n",DSJF_EX.diagrama);
+	printf(" HPF_EX: %s\n",DHPF_EX.diagrama);
 	/*for(s = 0; s<FIFO.size ; s++){
 		printThread(FIFO.ready[s]);
 		printThread(SJF_EX.ready[s]);
