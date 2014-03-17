@@ -26,6 +26,7 @@ struct amigo {
 	int top;
 	int size ;
 } FIFO, SJF_NE, SJF_EX, HPF_EX, HPF_NE, RR_2, RR_3, LTS;
+typedef struct amigo amigo;
 struct diagrama {
 	char diagrama[4000];
 	int pos;
@@ -488,7 +489,6 @@ int main(int argc, char ** argv)
 		procesos.vector[procesos.pos++] = pt;
 	}
 	int s = 0;
-	printf("%d\n",tt);
 	for(s = 0; s<tt + 1024; s++) {
 		avanzar(s);
 		correr(s);
@@ -510,4 +510,5 @@ int main(int argc, char ** argv)
 	fprintf(fs," HPF_EX: %s\n",DHPF_EX.diagrama);
 	fprintf(fs," HPF_NE: %s\n",DHPF_NE.diagrama);
 	fprintf(fs," Lottery: %s\n",DLTS.diagrama);
+	return 0;
 }

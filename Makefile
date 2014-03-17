@@ -1,4 +1,4 @@
-CC='gcc'
+CC='gcc-4.6'
 FLAGS='-Wall'
 LIBS=''
 all: scheduler
