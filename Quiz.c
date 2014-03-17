@@ -493,7 +493,7 @@ int main(int argc, char ** argv)
 		avanzar(s);
 		correr(s);
 	}
-	FILE * fs = fopen(argv[2], "ab+");
+	FILE * fs = fopen(argv[2], "wb+");
 	DFIFO.diagrama[DFIFO.pos++] = '\0';
 	DRR_2.diagrama[DRR_2.pos++] = '\0';
 	DRR_3.diagrama[DRR_3.pos++] = '\0';
@@ -510,5 +510,7 @@ int main(int argc, char ** argv)
 	fprintf(fs," HPF_EX: %s\n",DHPF_EX.diagrama);
 	fprintf(fs," HPF_NE: %s\n",DHPF_NE.diagrama);
 	fprintf(fs," Lottery: %s\n",DLTS.diagrama);
+	fclose(fp);	
+	fclose(fs);
 	return 0;
 }
