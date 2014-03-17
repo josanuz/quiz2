@@ -34,7 +34,7 @@ typedef struct diagrama diagrama;
 int tt = 0, qt2, qt3, highest;
 bool istrue(int x);
 bool used = false;
-char relleno = '';
+char relleno = '#';
 void expropiarSJF();
 void expropiar(struct amigo * v)
 {
@@ -410,7 +410,6 @@ void randToTop(amigo * a)
 }
 void runLts(int i)
 {
-	bool writtes;
 	if(LTS.running == NULL || LTS.running->DR == 0) {
 		if(LTS.running == NULL) {
 			randToTop(&LTS);
@@ -478,7 +477,6 @@ int main(int argc, char ** argv)
 	}
 	highest = 0;
 	while (fscanf(fp, "%d %d %d %d %d\n", &_pid,&_hl,&_dr,&_pr,&_tk) == 5) {
-		//printf("%d %d %d %d %d\n",_pid,_hl,_dr,_pr,_tk);
 		pt = (thread*)malloc(sizeof(thread));
 		pt->PID = _pid;
 		pt->HL = _hl;
@@ -486,8 +484,6 @@ int main(int argc, char ** argv)
 		pt->PR = _pr;
 		pt->TK = _tk;
 		tt+=_dr;
-		//minmaxvector.vt[pos++] = {maxTickets , maxTickets+_tk, _pid};
-		//maxTickets += _tk;
 		if(_tk > highest) highest = _tk;
 		procesos.vector[procesos.pos++] = pt;
 	}
